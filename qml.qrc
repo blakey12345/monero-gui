@@ -129,6 +129,15 @@
         <file>lang/flags/taiwan.png</file>
         <file>lang/flags/uk.png</file>
         <file>lang/flags/usa.png</file>
+        <file>lang/flags/srbija.png</file>
+        <file>lang/flags/israel.png</file>
+        <file>lang/flags/south_korea.png</file>
+        <file>lang/flags/romania.png</file>
+        <file>lang/flags/czech.png</file>
+        <file>lang/flags/slovakia.png</file>
+        <file>lang/flags/egypt.png</file>
+        <file>lang/flags/catalonia.png</file>
+        <file>lang/flags/tr.png</file>
         <file>wizard/WizardManageWalletUI.qml</file>
         <file>wizard/WizardRecoveryWallet.qml</file>
         <file>wizard/WizardMemoTextInput.qml</file>
@@ -156,5 +165,6 @@
         <file>components/RemoteNodeEdit.qml</file>
         <file>pages/Keys.qml</file>
         <file>images/menu.png</file>
+        <file>images/appicon.ico</file>
     </qresource>
 </RCC>

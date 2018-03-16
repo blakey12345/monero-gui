@@ -5,6 +5,8 @@ QT += qml quick widgets
 WALLET_ROOT=$$PWD/monero
 
 CONFIG += c++11
+QMAKE_CXXFLAGS += -fPIC -fstack-protector
+QMAKE_LFLAGS += -fstack-protector
 
 # cleaning "auto-generated" bitmonero directory on "make distclean"
 QMAKE_DISTCLEAN += -r $$WALLET_ROOT
@@ -102,7 +104,6 @@ LIBS += -L$$WALLET_ROOT/lib \
         -lepee \
         -lunbound \
         -leasylogging \
-        -lreadline \
 }
 
 android {
@@ -116,6 +117,8 @@ android {
 
 
 
+QMAKE_CXXFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=1 -Wformat -Wformat-security -fstack-protector -fstack-protector-strong
+QMAKE_CFLAGS += -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=1 -Wformat -Wformat-security -fstack-protector -fstack-protector-strong
 
 ios {
     message("Host is IOS")
@@ -218,6 +221,13 @@ win32 {
         -lboost_regex-mt-s \
         -lboost_chrono-mt-s \
         -lboost_program_options-mt-s \
+        -lboost_locale-mt-s \
+        -licuio \
+        -licuin \
+        -licuuc \
+        -licudt \
+        -licutu \
+        -liconv \
         -lssl \
         -lcrypto \
         -Wl,-Bdynamic \
@@ -236,6 +246,7 @@ win32 {
         message("Target is 64bit")
     }
 
+    QMAKE_LFLAGS += -Wl,--dynamicbase -Wl,--nxcompat
 }
 
 linux {
@@ -276,6 +287,8 @@ linux {
         message(Building with libunwind)
         LIBS += -Wl,-Bdynamic -lunwind
     }
+
+    QMAKE_LFLAGS += -pie -Wl,-z,relro -Wl,-z,now -Wl,-z,noexecstack
 }
 
 macx {
@@ -299,7 +312,9 @@ macx {
         -lssl \
         -lcrypto \
         -ldl
+    LIBS+= -framework PCSC
 
+    QMAKE_LFLAGS += -pie
 }
 
 
@@ -332,6 +347,9 @@ TRANSLATIONS =  \ # English is default language, no explicit translation file
                 $$PWD/translations/monero-core_sk.ts \ # Slovak
                 $$PWD/translations/monero-core_ar.ts \ # Arabic
                 $$PWD/translations/monero-core_sl.ts \ # Slovenian
+                $$PWD/translations/monero-core_rs.ts \ # Serbian
+                $$PWD/translations/monero-core_cat.ts \ # Catalan
+                $$PWD/translations/monero-core_tr.ts \ # Turkish
 
 CONFIG(release, debug|release) {
     DESTDIR = release/bin

@@ -54,8 +54,8 @@ ColumnLayout {
 
     function onPageClosed(settingsObject) {
         appWindow.persistentSettings.useRemoteNode = remoteNode.checked
-        appWindow.persistentSettings.startLocalNode = localNode.checked
         appWindow.persistentSettings.remoteNodeAddress = remoteNodeEdit.getAddress();
+        appWindow.persistentSettings.bootstrapNodeAddress = bootstrapNodeEdit.daemonAddrText ? bootstrapNodeEdit.getAddress() : "";
         return true
     }
 
@@ -129,8 +129,12 @@ ColumnLayout {
                 fontSize: 16 * scaleRatio
                 checkedIcon: "../images/checkedVioletIcon.png"
                 uncheckedIcon: "../images/uncheckedIcon.png"
-                checked: appWindow.persistentSettings.startLocalNode && !isAndroid && !isIOS
+                checked: !appWindow.persistentSettings.useRemoteNode && !isAndroid && !isIOS
                 visible: !isAndroid && !isIOS
+                onClicked: {
+                    checked = true;
+                    remoteNode.checked = false;
+                }
             }
         }
 
@@ -162,13 +166,25 @@ ColumnLayout {
                 }
 
             }
+            Label {
+                Layout.fillWidth: true
+                Layout.topMargin: 20 * scaleRatio
+                fontSize: 14 * scaleRatio
+                text: qsTr("Bootstrap node (leave blank if not wanted)") + translationManager.emptyString
+            }
+            RemoteNodeEdit {
+                Layout.minimumWidth: 300 * scaleRatio
+                opacity: localNode.checked
+                id: bootstrapNodeEdit
+                daemonAddrText: persistentSettings.bootstrapNodeAddress.split(":")[0].trim()
+                daemonPortText: (persistentSettings.bootstrapNodeAddress.split(":")[1].trim() == "") ? "18081" : persistentSettings.bootstrapNodeAddress.split(":")[1]
+            }
         }
 
         RowLayout {
             CheckBox {
                 id: remoteNode
-                text: (localNode.checked) ? qsTr("Connect to a remote node until my own node has finished syncing") + translationManager.emptyString
-                                          : qsTr("Connect to a remote node") + translationManager.emptyString
+                text: qsTr("Connect to a remote node") + translationManager.emptyString
                 Layout.topMargin: 20 * scaleRatio
                 background: "#FFFFFF"
                 fontColor: "#4A4646"
@@ -176,6 +192,10 @@ ColumnLayout {
                 checkedIcon: "../images/checkedVioletIcon.png"
                 uncheckedIcon: "../images/uncheckedIcon.png"
                 checked: appWindow.persistentSettings.useRemoteNode
+                onClicked: {
+                    checked = true
+                    localNode.checked = false
+                }
             }
 
         }
@@ -185,8 +205,9 @@ ColumnLayout {
                 Layout.minimumWidth: 300 * scaleRatio
                 opacity: remoteNode.checked
                 id: remoteNodeEdit
-                daemonAddrText: persistentSettings.remoteNodeAddress.split(":")[0].trim()
-                daemonPortText: (persistentSettings.remoteNodeAddress.split(":")[1].trim() == "") ? "18081" : persistentSettings.remoteNodeAddress.split(":")[1]
+                property var rna: persistentSettings.remoteNodeAddress
+                daemonAddrText: rna.search(":") != -1 ? rna.split(":")[0].trim() : ""
+                daemonPortText: rna.search(":") != -1 ? (rna.split(":")[1].trim() == "") ? "18081" : persistentSettings.remoteNodeAddress.split(":")[1] : ""
             }
         }
     }

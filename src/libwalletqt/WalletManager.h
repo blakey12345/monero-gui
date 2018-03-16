@@ -111,6 +111,7 @@ public:
     Q_INVOKABLE quint64 blockchainTargetHeight() const;
     Q_INVOKABLE double miningHashRate() const;
     Q_INVOKABLE bool localDaemonSynced() const;
+    Q_INVOKABLE bool isDaemonLocal(const QString &daemon_address) const;
 
     Q_INVOKABLE bool isMining() const;
     Q_INVOKABLE bool startMining(const QString &address, quint32 threads, bool backgroundMining, bool ignoreBattery);
@@ -140,6 +141,11 @@ public:
 
     // clear/rename wallet cache
     Q_INVOKABLE bool clearWalletCache(const QString &fileName) const;
+
+    Q_INVOKABLE void debug(const QString &s);
+    Q_INVOKABLE void info(const QString &s);
+    Q_INVOKABLE void warning(const QString &s);
+    Q_INVOKABLE void error(const QString &s);
 
 signals:
 

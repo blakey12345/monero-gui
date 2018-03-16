@@ -270,6 +270,11 @@ bool WalletManager::localDaemonSynced() const
     return blockchainHeight() > 1 && blockchainHeight() >= blockchainTargetHeight();
 }
 
+bool WalletManager::isDaemonLocal(const QString &daemon_address) const
+{
+    return Monero::Utils::isAddressLocal(daemon_address.toStdString());
+}
+
 QString WalletManager::resolveOpenAlias(const QString &address) const
 {
     bool dnssec_valid = false;
@@ -370,6 +375,26 @@ bool WalletManager::clearWalletCache(const QString &wallet_path) const
     }
 
     return walletCache.rename(newFileName);
+}
+
+void WalletManager::debug(const QString &s)
+{
+    Monero::Wallet::debug("qml", s.toStdString());
+}
+
+void WalletManager::info(const QString &s)
+{
+    Monero::Wallet::info("qml", s.toStdString());
+}
+
+void WalletManager::warning(const QString &s)
+{
+    Monero::Wallet::warning("qml", s.toStdString());
+}
+
+void WalletManager::error(const QString &s)
+{
+    Monero::Wallet::error("qml", s.toStdString());
 }
 
 WalletManager::WalletManager(QObject *parent) : QObject(parent)

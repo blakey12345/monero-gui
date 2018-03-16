@@ -30,6 +30,7 @@
 #include <QQmlApplicationEngine>
 #include <QtQml>
 #include <QStandardPaths>
+#include <QIcon>
 #include <QDebug>
 #include <QObject>
 #include <QDesktopWidget>
@@ -67,7 +68,7 @@
 void messageHandler(QtMsgType type, const QMessageLogContext &context, const QString &msg)
 {
     // Send all message types to logger
-    Monero::Wallet::debug(msg.toStdString());
+    Monero::Wallet::debug("qml", msg.toStdString());
 }
 
 int main(int argc, char *argv[])
@@ -90,6 +91,10 @@ int main(int argc, char *argv[])
     app.setApplicationName("monero-core");
     app.setOrganizationDomain("getmonero.org");
     app.setOrganizationName("monero-project");
+
+    #if defined(Q_OS_LINUX) && !defined(Q_OS_ANDROID)
+    app.setWindowIcon(QIcon(":/images/appicon.ico"));
+    #endif
 
     filter *eventFilter = new filter;
     app.installEventFilter(eventFilter);
@@ -255,7 +260,17 @@ int main(int argc, char *argv[])
 
     // Load main window (context properties needs to be defined obove this line)
     engine.load(QUrl(QStringLiteral("qrc:///main.qml")));
+    if (engine.rootObjects().isEmpty())
+    {
+        qCritical() << "Error: no root objects";
+        return 1;
+    }
     QObject *rootObject = engine.rootObjects().first();
+    if (!rootObject)
+    {
+        qCritical() << "Error: no root objects";
+        return 1;
+    }
 
 #ifdef WITH_SCANNER
     QObject *qmlCamera = rootObject->findChild<QObject*>("qrCameraQML");

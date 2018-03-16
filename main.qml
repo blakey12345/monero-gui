@@ -86,7 +86,7 @@ ApplicationWindow {
     }
 
     function sequencePressed(obj, seq) {
-        if(seq === undefined)
+        if(seq === undefined || !leftPanel.enabled)
             return
         if(seq === "Ctrl") {
             ctrlPressed = true
@@ -224,7 +224,7 @@ ApplicationWindow {
             var wallet_path = walletPath();
             if(isIOS)
                 wallet_path = moneroAccountsDir + wallet_path;
-            // console.log("opening wallet at: ", wallet_path, "with password: ", appWindow.password);
+            // console.log("opening wallet at: ", wallet_path, "with password: ", appWindow.walletPassword);
             console.log("opening wallet at: ", wallet_path, ", testnet: ", persistentSettings.testnet);
             walletManager.openWalletAsync(wallet_path, walletPassword,
                                               persistentSettings.testnet);
@@ -320,13 +320,12 @@ ApplicationWindow {
         console.log("Wallet connection status changed " + status)
         middlePanel.updateStatus();
         leftPanel.networkStatus.connected = status
-        leftPanel.progressBar.visible = (status === Wallet.ConnectionStatus_Connected) && !daemonSynced
 
         // Update fee multiplier dropdown on transfer page
         middlePanel.transferView.updatePriorityDropdown();
 
         // If wallet isnt connected and no daemon is running - Ask
-        if(!isMobile && isDaemonLocal() && !walletInitialized && status === Wallet.ConnectionStatus_Disconnected && !daemonManager.running(persistentSettings.testnet)){
+        if(!isMobile && walletManager.isDaemonLocal(appWindow.persistentSettings.daemon_address) && !walletInitialized && status === Wallet.ConnectionStatus_Disconnected && !daemonManager.running(persistentSettings.testnet)){
             daemonManagerDialog.open();
         }
         // initialize transaction history once wallet is initialized first time;
@@ -414,37 +413,13 @@ ApplicationWindow {
         // targetBlock = currentBlock = 1 before network connection is established.
         daemonSynced = dCurrentBlock >= dTargetBlock && dTargetBlock != 1
         // Update daemon sync progress
-        leftPanel.progressBar.updateProgress(dCurrentBlock,dTargetBlock);
-        leftPanel.progressBar.visible =  !daemonSynced && currentWallet.connected() !== Wallet.ConnectionStatus_Disconnected
+        leftPanel.daemonProgressBar.updateProgress(dCurrentBlock,dTargetBlock);
+        if(!daemonSynced)
+            leftPanel.progressBar.updateProgress(0,dTargetBlock, dTargetBlock, qsTr("Waiting for daemon to sync"));
         // Update wallet sync progress
         updateSyncing((currentWallet.connected() !== Wallet.ConnectionStatus_Disconnected) && !daemonSynced)
         // Update transfer page status
         middlePanel.updateStatus();
-
-        // Use remote node while local daemon is syncing
-        if (persistentSettings.useRemoteNode) {
-            var localNodeConnected = walletManager.connected;
-            var localNodeSynced = localNodeConnected && walletManager.localDaemonSynced()
-            if (!currentWallet.connected() || !localNodeSynced) {
-                console.log("Using remote node while local node is syncing")
-                // Connect to remote node if not already connected
-                if(!remoteNodeConnected) {
-                    connectRemoteNode();
-                }
-
-                //update local daemon sync progress bar
-                if(localNodeConnected) {
-                    leftPanel.progressBar.updateProgress(walletManager.blockchainHeight(),walletManager.blockchainTargetHeight(), 0, qsTr("Remaining blocks (local node):"));
-                    leftPanel.progressBar.visible = true
-                } else if (persistentSettings.startLocalNode && !startLocalNodeCancelled) {
-                    daemonManagerDialog.open()
-                }
-
-            // local daemon is synced - use it!
-            } else if (localNodeSynced && remoteNodeConnected) {
-                disconnectRemoteNode();
-            }
-        }
 
         // Refresh is succesfull if blockchain height > 1
         if (currentWallet.blockChainHeight() > 1){
@@ -478,7 +453,7 @@ ApplicationWindow {
         currentWallet.pauseRefresh();
 
         appWindow.showProcessingSplash(qsTr("Waiting for daemon to start..."))
-        daemonManager.start(flags, persistentSettings.testnet, persistentSettings.blockchainDataDir);
+        daemonManager.start(flags, persistentSettings.testnet, persistentSettings.blockchainDataDir, persistentSettings.bootstrapNodeAddress);
         persistentSettings.daemonFlags = flags
     }
 
@@ -783,10 +758,10 @@ ApplicationWindow {
         var result;
         if (address.length > 0)
             result = currentWallet.getTxProof(txid, address, message);
-        if (!result || result.startsWith("error|"))
+        if (!result || result.indexOf("error|") === 0)
             result = currentWallet.getSpendProof(txid, message);
         informationPopup.title  = qsTr("Payment proof") + translationManager.emptyString;
-        if (result.startsWith("error|")) {
+        if (result.indexOf("error|") === 0) {
             var errorString = result.split("|")[1];
             informationPopup.text = qsTr("Couldn't generate a proof because of the following reason: \n") + errorString + translationManager.emptyString;
             informationPopup.icon = StandardIcon.Critical;
@@ -1004,9 +979,9 @@ ApplicationWindow {
         property string daemonPassword: ""
         property bool transferShowAdvanced: false
         property string blockchainDataDir: ""
-        property bool startLocalNode: true
         property bool useRemoteNode: false
         property string remoteNodeAddress: ""
+        property string bootstrapNodeAddress: ""
     }
 
     // Information dialog
@@ -1690,16 +1665,6 @@ ApplicationWindow {
         id: updatesTimer
         interval: 3600*1000; running: true; repeat: true
         onTriggered: checkUpdates()
-    }
-
-    function isDaemonLocal() {
-        var daemonAddress = appWindow.persistentSettings.daemon_address
-        if (daemonAddress === "")
-            return false
-        var daemonHost = daemonAddress.split(":")[0]
-        if (daemonHost === "127.0.0.1" || daemonHost === "localhost")
-            return true
-        return false
     }
 
     function releaseFocus() {

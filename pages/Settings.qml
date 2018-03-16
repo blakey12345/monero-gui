@@ -128,7 +128,7 @@ Rectangle {
                     confirmationDialog.onAcceptedCallback = function() {
                         walletManager.closeWallet();
                         walletManager.clearWalletCache(persistentSettings.wallet_path);
-                        walletManager.openWalletAsync(persistentSettings.wallet_path, appWindow.password,
+                        walletManager.openWalletAsync(persistentSettings.wallet_path, appWindow.walletPassword,
                                                           persistentSettings.testnet);
                     }
 
@@ -248,7 +248,7 @@ Rectangle {
         }
 
         GridLayout {
-            visible: !isMobile
+            visible: !isMobile && !persistentSettings.useRemoteNode
             id: daemonStatusRow
             columns: (isMobile) ?  2 : 4
             StandardButton {
@@ -260,6 +260,9 @@ Rectangle {
                 releasedColor: "#FF6C3C"
                 pressedColor: "#FF4304"
                 onClicked: {
+                    // Update bootstrap daemon address
+                    persistentSettings.bootstrapNodeAddress = bootstrapNodeEdit.daemonAddrText ? bootstrapNodeEdit.getAddress() : "";
+
                     // Set current daemon address to local
                     appWindow.currentDaemonAddress = appWindow.localDaemonAddress
                     appWindow.startDaemon(daemonFlags.text)
@@ -296,7 +299,7 @@ Rectangle {
 
         ColumnLayout {
             id: blockchainFolderRow
-            visible: !isMobile
+            visible: !isMobile && !persistentSettings.useRemoteNode
             Label {
                 id: blockchainFolderLabel
                 color: "#4A4949"
@@ -325,7 +328,7 @@ Rectangle {
 
 
         RowLayout {
-            visible: daemonAdvanced.checked && !isMobile
+            visible: daemonAdvanced.checked && !isMobile && !persistentSettings.useRemoteNode
             id: daemonFlagsRow
             Label {
                 id: daemonFlagsLabel
@@ -343,7 +346,7 @@ Rectangle {
 
         RowLayout {
             Layout.fillWidth: true
-            visible: daemonAdvanced.checked || isMobile
+            visible: (daemonAdvanced.checked || isMobile) && persistentSettings.useRemoteNode
             Label {
                 id: daemonLoginLabel
                 Layout.fillWidth: true
@@ -354,7 +357,7 @@ Rectangle {
         }
 
         ColumnLayout {
-            visible: daemonAdvanced.checked || isMobile
+            visible: (daemonAdvanced.checked || isMobile) && persistentSettings.useRemoteNode
             LineEdit {
                 id: daemonUsername
                 Layout.preferredWidth:  100 * scaleRatio
@@ -375,6 +378,26 @@ Rectangle {
         }
 
         RowLayout {
+            visible: !isMobile && !persistentSettings.useRemoteNode
+            ColumnLayout {
+                Label {
+                    color: "#4A4949"
+                    text: qsTr("Bootstrap node (leave blank if not wanted)") + translationManager.emptyString
+                }
+                RemoteNodeEdit {
+                    id: bootstrapNodeEdit
+                    Layout.minimumWidth: 100 * scaleRatio
+                    daemonAddrText: persistentSettings.bootstrapNodeAddress.split(":")[0].trim()
+                    daemonPortText: (persistentSettings.bootstrapNodeAddress.split(":")[1].trim() == "") ? "18081" : persistentSettings.bootstrapNodeAddress.split(":")[1]
+                    onEditingFinished: {
+                        persistentSettings.bootstrapNodeAddress = daemonAddrText ? bootstrapNodeEdit.getAddress() : "";
+                        console.log("setting bootstrap node to " + persistentSettings.bootstrapNodeAddress)
+                    }
+                }
+            }
+        }
+
+        RowLayout {
             visible: persistentSettings.useRemoteNode
             ColumnLayout {
                 Label {
@@ -384,8 +407,9 @@ Rectangle {
                 RemoteNodeEdit {
                     id: remoteNodeEdit
                     Layout.minimumWidth: 100 * scaleRatio
-                    daemonAddrText: persistentSettings.remoteNodeAddress.split(":")[0].trim()
-                    daemonPortText: (persistentSettings.remoteNodeAddress.split(":")[1].trim() == "") ? "18081" : persistentSettings.remoteNodeAddress.split(":")[1]
+                    property var rna: persistentSettings.remoteNodeAddress
+                    daemonAddrText: rna.search(":") != -1 ? rna.split(":")[0].trim() : ""
+                    daemonPortText: rna.search(":") != -1 ? (rna.split(":")[1].trim() == "") ? "18081" : rna.split(":")[1] : ""
                     onEditingFinished: {
                         persistentSettings.remoteNodeAddress = remoteNodeEdit.getAddress();
                         console.log("setting remote node to " + persistentSettings.remoteNodeAddress)
@@ -520,7 +544,7 @@ Rectangle {
             id: restoreHeightText
             Layout.fillWidth: true
             textFormat: Text.RichText
-            property var txt: "<style type='text/css'>a {text-decoration: none; color: #FF6C3C}</style>" + qsTr("Wallet creation height: ") + currentWallet.walletCreationHeight + translationManager.emptyString
+            property var txt: "<style type='text/css'>a {text-decoration: none; color: #FF6C3C}</style>" + qsTr("Wallet creation height: ") + (currentWallet ? currentWallet.walletCreationHeight : "") + translationManager.emptyString
             property var linkTxt: qsTr(" <a href='#'>(Click to change)</a>") + translationManager.emptyString
             text: (typeof currentWallet == "undefined") ? "" : txt + linkTxt
 
@@ -537,7 +561,7 @@ Rectangle {
                 id: restoreHeight
                 Layout.preferredWidth: 80
                 Layout.fillWidth: true
-                text: currentWallet.walletCreationHeight
+                text: currentWallet ? currentWallet.walletCreationHeight : "0"
                 validator: IntValidator {
                     bottom:0
                 }
@@ -556,7 +580,7 @@ Rectangle {
                 onClicked: {
                     currentWallet.walletCreationHeight = restoreHeight.text
                     // Restore height is saved in .keys file. Set password to trigger rewrite.
-                    currentWallet.setPassword(appWindow.password)
+                    currentWallet.setPassword(appWindow.walletPassword)
                     restoreHeightRow.visible = false
 
                     // Show confirmation dialog
@@ -573,7 +597,7 @@ Rectangle {
                     confirmationDialog.onAcceptedCallback = function() {
                         walletManager.closeWallet();
                         walletManager.clearWalletCache(persistentSettings.wallet_path);
-                        walletManager.openWalletAsync(persistentSettings.wallet_path, appWindow.password,
+                        walletManager.openWalletAsync(persistentSettings.wallet_path, appWindow.walletPassword,
                                                           persistentSettings.testnet);
                     }
 
@@ -589,7 +613,7 @@ Rectangle {
 
         TextBlock {
             Layout.fillWidth: true
-            text:  (typeof currentWallet == "undefined") ? "" : qsTr("Wallet log path: ") + currentWallet.walletLogPath + translationManager.emptyString
+            text:  (!currentWallet) ? "" : qsTr("Wallet log path: ") + currentWallet.walletLogPath + translationManager.emptyString
         }
         TextBlock {
             Layout.fillWidth: true
@@ -597,7 +621,7 @@ Rectangle {
         }
         TextBlock {
             Layout.fillWidth: true
-            text:  (typeof currentWallet == "undefined") ? "" : qsTr("Daemon log path: ") + currentWallet.daemonLogPath + translationManager.emptyString
+            text:  (!currentWallet) ? "" : qsTr("Daemon log path: ") + currentWallet.daemonLogPath + translationManager.emptyString
         }
     }
 
